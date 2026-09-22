@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from .convert import convert_to_markdown
 from .jobs import JobStore
+from .render import render_to_html
 
 logger = logging.getLogger("to_md")
 
@@ -73,7 +74,8 @@ def _run_conversion(job_id: str, source: bytes, extension: str, filename: str) -
         logger.exception("conversion failed for job %s", job_id)
         job_store.mark_error(job_id, "conversion failed")
         return
-    job_store.mark_done(job_id, markdown, _suggested_filename(filename))
+    html = render_to_html(markdown)
+    job_store.mark_done(job_id, markdown, html, _suggested_filename(filename))
 
 
 def _log_unhandled(future: asyncio.Future) -> None:
@@ -129,6 +131,7 @@ async def get_job(job_id: str) -> JSONResponse:
     body = {"status": job.status.value}
     if job.status.value == "done":
         body["markdown"] = job.markdown
+        body["html"] = job.html
         body["filename"] = job.filename
     elif job.status.value == "error":
         body["error"] = job.error

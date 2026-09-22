@@ -6,7 +6,12 @@
 <style>
   body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
   pre { white-space: pre-wrap; word-wrap: break-word; border: 1px solid #ccc; padding: 1rem; }
+  #rendered { border: 1px solid #ccc; padding: 1rem; }
+  #rendered table { border-collapse: collapse; }
+  #rendered th, #rendered td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
   #status { margin: 1rem 0; }
+  #view-toggle { margin: 1rem 0; display: none; }
+  #view-toggle button[aria-pressed="true"] { font-weight: bold; }
 </style>
 </head>
 <body>
@@ -16,7 +21,13 @@
     <button type="submit" id="submit">Convert</button>
   </form>
   <p id="status"></p>
+
+  <div id="view-toggle">
+    <button type="button" id="view-raw" aria-pressed="true">Raw</button>
+    <button type="button" id="view-rendered" aria-pressed="false">Rendered</button>
+  </div>
   <pre id="markdown"></pre>
+  <div id="rendered" hidden></div>
 
   <script>
     const form = document.getElementById("upload-form");
@@ -24,12 +35,27 @@
     const sourceInput = document.getElementById("source");
     const statusEl = document.getElementById("status");
     const markdownEl = document.getElementById("markdown");
+    const renderedEl = document.getElementById("rendered");
+    const viewToggle = document.getElementById("view-toggle");
+    const viewRawButton = document.getElementById("view-raw");
+    const viewRenderedButton = document.getElementById("view-rendered");
 
     const POLL_INTERVAL_MS = 1500;
 
     function setStatus(text) {
       statusEl.textContent = text;
     }
+
+    function showView(view) {
+      const raw = view === "raw";
+      markdownEl.hidden = !raw;
+      renderedEl.hidden = raw;
+      viewRawButton.setAttribute("aria-pressed", String(raw));
+      viewRenderedButton.setAttribute("aria-pressed", String(!raw));
+    }
+
+    viewRawButton.addEventListener("click", () => showView("raw"));
+    viewRenderedButton.addEventListener("click", () => showView("rendered"));
 
     async function pollJob(jobId) {
       const response = await fetch(`/api/jobs/${jobId}`);
@@ -42,6 +68,9 @@
       if (body.status === "done") {
         setStatus("Done.");
         markdownEl.textContent = body.markdown;
+        renderedEl.innerHTML = body.html;
+        viewToggle.style.display = "block";
+        showView("raw");
         submitButton.disabled = false;
         return;
       }
@@ -61,6 +90,8 @@
 
       submitButton.disabled = true;
       markdownEl.textContent = "";
+      renderedEl.innerHTML = "";
+      viewToggle.style.display = "none";
       setStatus("Uploading…");
 
       const formData = new FormData();

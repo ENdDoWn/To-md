@@ -8,7 +8,9 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
+    "markdown>=3.7",
     "markitdown[docx,pdf,pptx,xls,xlsx]>=0.0.1a3",
+    "nh3>=0.2",
     "python-multipart>=0.0.12",
     "uvicorn[standard]>=0.32",
 ]

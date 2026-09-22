@@ -27,6 +27,7 @@ class Job:
     id: str
     status: JobStatus = JobStatus.QUEUED
     markdown: str | None = None
+    html: str | None = None
     filename: str | None = None
     error: str | None = None
     finished_at: float | None = None
@@ -59,10 +60,11 @@ class JobStore:
     def mark_running(self, job_id: str) -> None:
         self._update(job_id, lambda job: setattr(job, "status", JobStatus.RUNNING))
 
-    def mark_done(self, job_id: str, markdown: str, filename: str) -> None:
+    def mark_done(self, job_id: str, markdown: str, html: str, filename: str) -> None:
         def apply(job: Job) -> None:
             job.status = JobStatus.DONE
             job.markdown = markdown
+            job.html = html
             job.filename = filename
             job.finished_at = time.monotonic()
 
