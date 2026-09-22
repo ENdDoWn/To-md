@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>To-md</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
+  pre { white-space: pre-wrap; word-wrap: break-word; border: 1px solid #ccc; padding: 1rem; }
+  #status { margin: 1rem 0; }
+</style>
+</head>
+<body>
+  <h1>To-md</h1>
+  <form id="upload-form">
+    <input type="file" id="source" name="source" accept=".docx" required>
+    <button type="submit" id="submit">Convert</button>
+  </form>
+  <p id="status"></p>
+  <pre id="markdown"></pre>
+
+  <script>
+    const form = document.getElementById("upload-form");
+    const submitButton = document.getElementById("submit");
+    const sourceInput = document.getElementById("source");
+    const statusEl = document.getElementById("status");
+    const markdownEl = document.getElementById("markdown");
+
+    const POLL_INTERVAL_MS = 1500;
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    async function pollJob(jobId) {
+      const response = await fetch(`/api/jobs/${jobId}`);
+      if (response.status === 404) {
+        setStatus("Job not found.");
+        submitButton.disabled = false;
+        return;
+      }
+      const body = await response.json();
+      if (body.status === "done") {
+        setStatus("Done.");
+        markdownEl.textContent = body.markdown;
+        submitButton.disabled = false;
+        return;
+      }
+      if (body.status === "error") {
+        setStatus("Conversion failed.");
+        submitButton.disabled = false;
+        return;
+      }
+      setStatus(`Converting… (${body.status})`);
+      setTimeout(() => pollJob(jobId), POLL_INTERVAL_MS);
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = sourceInput.files[0];
+      if (!file) return;
+
+      submitButton.disabled = true;
+      markdownEl.textContent = "";
+      setStatus("Uploading…");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      let response;
+      try {
+        response = await fetch("/api/jobs", { method: "POST", body: formData });
+      } catch (err) {
+        setStatus("Upload failed.");
+        submitButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        setStatus("Upload rejected.");
+        submitButton.disabled = false;
+        return;
+      }
+
+      const { id } = await response.json();
+      setStatus("Queued…");
+      pollJob(id);
+    });
+  </script>
+</body>
+</html>

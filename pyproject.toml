@@ -1,0 +1,26 @@
+[project]
+name = "to-md"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "enddown", email = "folkza1212123@hotmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "markitdown[docx]>=0.0.1a3",
+    "python-multipart>=0.0.12",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+to-md = "to_md:main"
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "python-docx>=1.2.0",
+]
