@@ -329,7 +329,14 @@
     sourceInput.addEventListener("change", updateFilename);
 
     async function pollJob(jobId) {
-      const response = await fetch(`/api/jobs/${jobId}`);
+      let response;
+      try {
+        response = await fetch(`/api/jobs/${jobId}`);
+      } catch (err) {
+        setState("converting", "Connection lost, retrying…");
+        setTimeout(() => pollJob(jobId), pollIntervalMs);
+        return;
+      }
       if (response.status === 404) {
         setState("error", "Job not found.");
         submitButton.disabled = false;
