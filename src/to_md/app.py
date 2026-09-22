@@ -42,6 +42,7 @@ ACCEPTED_FORMATS_LABEL = ", ".join(sorted(ext.removeprefix(".") for ext in ACCEP
 WORKER_COUNT = int(os.environ.get("TO_MD_WORKERS", "2"))
 RETENTION_SECONDS = float(os.environ.get("TO_MD_RETENTION_SECONDS", "600"))
 MAX_UPLOAD_BYTES = int(os.environ.get("TO_MD_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
+POLL_INTERVAL_MS = int(os.environ.get("TO_MD_POLL_INTERVAL_MS", "1500"))
 UPLOAD_CHUNK_BYTES = 1024 * 1024
 SWEEP_INTERVAL_SECONDS = 30
 
@@ -121,6 +122,16 @@ async def _read_within_limit(file: UploadFile, limit: int) -> bytes:
 @app.get("/")
 async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/health")
+async def health() -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/api/config")
+async def config() -> JSONResponse:
+    return JSONResponse({"pollIntervalMs": POLL_INTERVAL_MS})
 
 
 @app.post("/api/jobs", status_code=202)

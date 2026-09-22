@@ -245,7 +245,11 @@
     const copyButton = document.getElementById("copy-button");
     const downloadButton = document.getElementById("download-button");
 
-    const POLL_INTERVAL_MS = 1500;
+    let pollIntervalMs = 1500;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((config) => { pollIntervalMs = config.pollIntervalMs; })
+      .catch(() => {});
 
     let currentMarkdown = "";
     let currentFilename = "converted.md";
@@ -348,7 +352,7 @@
         return;
       }
       setState("converting", `Converting… (${body.status})`);
-      setTimeout(() => pollJob(jobId), POLL_INTERVAL_MS);
+      setTimeout(() => pollJob(jobId), pollIntervalMs);
     }
 
     form.addEventListener("submit", async (event) => {
