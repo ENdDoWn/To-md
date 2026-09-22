@@ -2,43 +2,244 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>To-md</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>to-md</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; }
-  pre { white-space: pre-wrap; word-wrap: break-word; border: 1px solid #ccc; padding: 1rem; }
-  #rendered { border: 1px solid #ccc; padding: 1rem; }
-  #rendered table { border-collapse: collapse; }
-  #rendered th, #rendered td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
-  #status { margin: 1rem 0; }
-  #view-toggle { margin: 1rem 0; display: none; }
-  #view-toggle button[aria-pressed="true"] { font-weight: bold; }
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --ink: #17181a;
+    --muted: #6b6f76;
+    --accent: #2f6f4f;
+    --accent-ink: #ffffff;
+    --border: #d8d5cd;
+    --danger: #b3402a;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1b1e24;
+      --ink: #e8e6df;
+      --muted: #9a9fa8;
+      --accent: #6fd7a0;
+      --accent-ink: #0d1410;
+      --border: #2c3038;
+      --danger: #ff8a70;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  header { margin-bottom: 2rem; }
+
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .wordmark .dot { color: var(--accent); }
+
+  .tagline {
+    color: var(--muted);
+    margin: 0.35rem 0 0;
+    font-size: 0.95rem;
+  }
+
+  #dropzone {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  #dropzone:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  #dropzone.dragover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  }
+  #dropzone p { margin: 0.25rem 0; }
+  .dropzone-hint { color: var(--muted); font-size: 0.95rem; }
+  .dropzone-formats { color: var(--muted); font-size: 0.75rem; margin-top: 0.75rem; }
+  #dropzone-filename {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+
+  form { display: flex; flex-direction: column; gap: 1rem; }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    padding: 0.55rem 1rem;
+  }
+  button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  #submit {
+    align-self: flex-start;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  #status-line {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+    min-height: 1.4em;
+  }
+  #status-line .prompt { color: var(--muted); }
+  .dot-indicator {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  [data-state="uploading"] .dot-indicator,
+  [data-state="converting"] .dot-indicator {
+    background: var(--accent);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  [data-state="done"] .dot-indicator { background: var(--accent); }
+  [data-state="error"] .dot-indicator { background: var(--danger); }
+  [data-state="error"] #status-line { color: var(--danger); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot-indicator { animation: none !important; }
+  }
+
+  #result { display: none; margin-top: 1rem; }
+  [data-state="done"] #result { display: block; }
+
+  #view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  #view-toggle .views {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #view-toggle .views button {
+    border: none;
+    border-radius: 0;
+    background: var(--surface);
+  }
+  #view-toggle .views button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  #view-toggle .actions { margin-left: auto; display: flex; gap: 0.5rem; }
+
+  pre, #rendered {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 28rem;
+    overflow: auto;
+  }
+  #rendered table { border-collapse: collapse; width: 100%; }
+  #rendered th, #rendered td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
+
+  @media (max-width: 30rem) {
+    body { padding: 1.5rem 1rem 3rem; }
+    #dropzone { padding: 2rem 1rem; }
+    #view-toggle .actions { margin-left: 0; width: 100%; }
+  }
 </style>
 </head>
 <body>
-  <h1>To-md</h1>
-  <form id="upload-form">
-    <input type="file" id="source" name="source" accept=".pdf,.docx,.pptx,.xlsx,.xls,.html,.htm,.csv,.json,.xml,.epub,.txt,.md" required>
-    <button type="submit" id="submit">Convert</button>
-  </form>
-  <p id="status"></p>
+  <main id="app" data-state="idle">
+    <header>
+      <p class="wordmark">to<span class="dot">·</span>md</p>
+      <p class="tagline">Drop a document, get its Markdown back. Nothing is stored.</p>
+    </header>
 
-  <div id="view-toggle">
-    <button type="button" id="view-raw" aria-pressed="true">Raw</button>
-    <button type="button" id="view-rendered" aria-pressed="false">Rendered</button>
-    <button type="button" id="copy-button" hidden>Copy</button>
-    <button type="button" id="download-button" hidden>Download</button>
-  </div>
-  <pre id="markdown"></pre>
-  <div id="rendered" hidden></div>
+    <form id="upload-form">
+      <div id="dropzone" tabindex="0" role="button" aria-label="Choose or drop a document to convert">
+        <input type="file" id="source" name="source" accept=".pdf,.docx,.pptx,.xlsx,.xls,.html,.htm,.csv,.json,.xml,.epub,.txt,.md" hidden required>
+        <p class="dropzone-hint">Drag a document here, or click to choose</p>
+        <p id="dropzone-filename"></p>
+        <p class="dropzone-formats">pdf · docx · pptx · xlsx · xls · html · htm · csv · json · xml · epub · txt · md</p>
+      </div>
+      <button type="submit" id="submit">Convert</button>
+    </form>
+
+    <div id="status-line">
+      <span class="dot-indicator" aria-hidden="true"></span>
+      <span class="prompt">&gt;</span>
+      <span id="status"></span>
+    </div>
+
+    <div id="result">
+      <div id="view-toggle">
+        <div class="views">
+          <button type="button" id="view-raw" aria-pressed="true">Raw</button>
+          <button type="button" id="view-rendered" aria-pressed="false">Rendered</button>
+        </div>
+        <div class="actions">
+          <button type="button" id="copy-button">Copy</button>
+          <button type="button" id="download-button">Download</button>
+        </div>
+      </div>
+      <pre id="markdown"></pre>
+      <div id="rendered" hidden></div>
+    </div>
+  </main>
 
   <script>
+    const app = document.getElementById("app");
     const form = document.getElementById("upload-form");
     const submitButton = document.getElementById("submit");
+    const dropzone = document.getElementById("dropzone");
     const sourceInput = document.getElementById("source");
+    const dropzoneFilename = document.getElementById("dropzone-filename");
     const statusEl = document.getElementById("status");
     const markdownEl = document.getElementById("markdown");
     const renderedEl = document.getElementById("rendered");
-    const viewToggle = document.getElementById("view-toggle");
     const viewRawButton = document.getElementById("view-raw");
     const viewRenderedButton = document.getElementById("view-rendered");
     const copyButton = document.getElementById("copy-button");
@@ -49,8 +250,9 @@
     let currentMarkdown = "";
     let currentFilename = "converted.md";
 
-    function setStatus(text) {
-      statusEl.textContent = text;
+    function setState(state, message) {
+      app.dataset.state = state;
+      statusEl.textContent = message;
     }
 
     function showView(view) {
@@ -85,33 +287,67 @@
       URL.revokeObjectURL(url);
     });
 
+    dropzone.addEventListener("click", () => sourceInput.click());
+    dropzone.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        sourceInput.click();
+      }
+    });
+
+    let dragDepth = 0;
+    dropzone.addEventListener("dragenter", (event) => {
+      event.preventDefault();
+      dragDepth += 1;
+      dropzone.classList.add("dragover");
+    });
+    dropzone.addEventListener("dragover", (event) => event.preventDefault());
+    dropzone.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) dropzone.classList.remove("dragover");
+    });
+    dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      dropzone.classList.remove("dragover");
+      const file = event.dataTransfer.files[0];
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      sourceInput.files = transfer.files;
+      updateFilename();
+    });
+
+    function updateFilename() {
+      const file = sourceInput.files[0];
+      dropzoneFilename.textContent = file ? file.name : "";
+    }
+    sourceInput.addEventListener("change", updateFilename);
+
     async function pollJob(jobId) {
       const response = await fetch(`/api/jobs/${jobId}`);
       if (response.status === 404) {
-        setStatus("Job not found.");
+        setState("error", "Job not found.");
         submitButton.disabled = false;
         return;
       }
       const body = await response.json();
       if (body.status === "done") {
-        setStatus("Done.");
         currentMarkdown = body.markdown;
         currentFilename = body.filename;
         markdownEl.textContent = body.markdown;
         renderedEl.innerHTML = body.html;
-        viewToggle.style.display = "block";
-        copyButton.hidden = false;
-        downloadButton.hidden = false;
         showView("raw");
+        setState("done", "Done — Markdown ready.");
         submitButton.disabled = false;
         return;
       }
       if (body.status === "error") {
-        setStatus(body.error || "Conversion failed.");
+        setState("error", body.error || "Conversion failed.");
         submitButton.disabled = false;
         return;
       }
-      setStatus(`Converting… (${body.status})`);
+      setState("converting", `Converting… (${body.status})`);
       setTimeout(() => pollJob(jobId), POLL_INTERVAL_MS);
     }
 
@@ -123,10 +359,7 @@
       submitButton.disabled = true;
       markdownEl.textContent = "";
       renderedEl.innerHTML = "";
-      viewToggle.style.display = "none";
-      copyButton.hidden = true;
-      downloadButton.hidden = true;
-      setStatus("Uploading…");
+      setState("uploading", "Uploading…");
 
       const formData = new FormData();
       formData.append("file", file);
@@ -135,20 +368,20 @@
       try {
         response = await fetch("/api/jobs", { method: "POST", body: formData });
       } catch (err) {
-        setStatus("Upload failed.");
+        setState("error", "Upload failed.");
         submitButton.disabled = false;
         return;
       }
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setStatus(body.detail || "Upload rejected.");
+        setState("error", body.detail || "Upload rejected.");
         submitButton.disabled = false;
         return;
       }
 
       const { id } = await response.json();
-      setStatus("Queued…");
+      setState("converting", "Queued…");
       pollJob(id);
     });
   </script>
