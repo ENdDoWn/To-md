@@ -25,6 +25,8 @@
   <div id="view-toggle">
     <button type="button" id="view-raw" aria-pressed="true">Raw</button>
     <button type="button" id="view-rendered" aria-pressed="false">Rendered</button>
+    <button type="button" id="copy-button" hidden>Copy</button>
+    <button type="button" id="download-button" hidden>Download</button>
   </div>
   <pre id="markdown"></pre>
   <div id="rendered" hidden></div>
@@ -39,8 +41,13 @@
     const viewToggle = document.getElementById("view-toggle");
     const viewRawButton = document.getElementById("view-raw");
     const viewRenderedButton = document.getElementById("view-rendered");
+    const copyButton = document.getElementById("copy-button");
+    const downloadButton = document.getElementById("download-button");
 
     const POLL_INTERVAL_MS = 1500;
+
+    let currentMarkdown = "";
+    let currentFilename = "converted.md";
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -57,6 +64,27 @@
     viewRawButton.addEventListener("click", () => showView("raw"));
     viewRenderedButton.addEventListener("click", () => showView("rendered"));
 
+    copyButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(currentMarkdown);
+        const original = copyButton.textContent;
+        copyButton.textContent = "Copied!";
+        setTimeout(() => { copyButton.textContent = original; }, 1500);
+      } catch (err) {
+        copyButton.textContent = "Copy failed";
+      }
+    });
+
+    downloadButton.addEventListener("click", () => {
+      const blob = new Blob([currentMarkdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = currentFilename;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
     async function pollJob(jobId) {
       const response = await fetch(`/api/jobs/${jobId}`);
       if (response.status === 404) {
@@ -67,9 +95,13 @@
       const body = await response.json();
       if (body.status === "done") {
         setStatus("Done.");
+        currentMarkdown = body.markdown;
+        currentFilename = body.filename;
         markdownEl.textContent = body.markdown;
         renderedEl.innerHTML = body.html;
         viewToggle.style.display = "block";
+        copyButton.hidden = false;
+        downloadButton.hidden = false;
         showView("raw");
         submitButton.disabled = false;
         return;
@@ -92,6 +124,8 @@
       markdownEl.textContent = "";
       renderedEl.innerHTML = "";
       viewToggle.style.display = "none";
+      copyButton.hidden = true;
+      downloadButton.hidden = true;
       setStatus("Uploading…");
 
       const formData = new FormData();
