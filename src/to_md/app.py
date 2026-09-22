@@ -20,9 +20,23 @@ logger = logging.getLogger("to_md")
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-# Accepted Source extensions. The walking skeleton handles DOCX only;
-# later issues widen this allowlist.
-ACCEPTED_EXTENSIONS = {".docx"}
+# The server-side allowlist: the real gate, regardless of what the client sent.
+ACCEPTED_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".html",
+    ".htm",
+    ".csv",
+    ".json",
+    ".xml",
+    ".epub",
+    ".txt",
+    ".md",
+}
+ACCEPTED_FORMATS_LABEL = ", ".join(sorted(ext.removeprefix(".") for ext in ACCEPTED_EXTENSIONS))
 
 WORKER_COUNT = int(os.environ.get("TO_MD_WORKERS", "2"))
 RETENTION_SECONDS = float(os.environ.get("TO_MD_RETENTION_SECONDS", "600"))
@@ -86,7 +100,10 @@ async def index() -> FileResponse:
 async def create_job(file: UploadFile) -> JSONResponse:
     extension = Path(file.filename or "").suffix.lower()
     if extension not in ACCEPTED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="unsupported file type")
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported file type; accepted formats: {ACCEPTED_FORMATS_LABEL}",
+        )
 
     source = await file.read()
     job = job_store.create()

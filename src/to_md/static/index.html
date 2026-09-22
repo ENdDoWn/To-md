@@ -12,7 +12,7 @@
 <body>
   <h1>To-md</h1>
   <form id="upload-form">
-    <input type="file" id="source" name="source" accept=".docx" required>
+    <input type="file" id="source" name="source" accept=".pdf,.docx,.pptx,.xlsx,.xls,.html,.htm,.csv,.json,.xml,.epub,.txt,.md" required>
     <button type="submit" id="submit">Convert</button>
   </form>
   <p id="status"></p>
@@ -76,7 +76,8 @@
       }
 
       if (!response.ok) {
-        setStatus("Upload rejected.");
+        const body = await response.json().catch(() => ({}));
+        setStatus(body.detail || "Upload rejected.");
         submitButton.disabled = false;
         return;
       }
