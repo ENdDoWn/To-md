@@ -107,7 +107,7 @@
         return;
       }
       if (body.status === "error") {
-        setStatus("Conversion failed.");
+        setStatus(body.error || "Conversion failed.");
         submitButton.disabled = false;
         return;
       }

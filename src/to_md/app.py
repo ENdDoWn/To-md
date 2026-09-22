@@ -41,6 +41,8 @@ ACCEPTED_FORMATS_LABEL = ", ".join(sorted(ext.removeprefix(".") for ext in ACCEP
 
 WORKER_COUNT = int(os.environ.get("TO_MD_WORKERS", "2"))
 RETENTION_SECONDS = float(os.environ.get("TO_MD_RETENTION_SECONDS", "600"))
+MAX_UPLOAD_BYTES = int(os.environ.get("TO_MD_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
+UPLOAD_CHUNK_BYTES = 1024 * 1024
 SWEEP_INTERVAL_SECONDS = 30
 
 job_store = JobStore(retention_seconds=RETENTION_SECONDS)
@@ -72,7 +74,7 @@ def _run_conversion(job_id: str, source: bytes, extension: str, filename: str) -
         markdown = convert_to_markdown(source, extension)
     except Exception:  # noqa: BLE001 - conversion failures become a clean Job error
         logger.exception("conversion failed for job %s", job_id)
-        job_store.mark_error(job_id, "conversion failed")
+        job_store.mark_error(job_id, "Could not convert this file — it may be corrupt.")
         return
     html = render_to_html(markdown)
     job_store.mark_done(job_id, markdown, html, _suggested_filename(filename))
@@ -93,6 +95,29 @@ def _suggested_filename(source_filename: str) -> str:
     return f"{stem}.md"
 
 
+def _max_upload_label() -> str:
+    return f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
+
+
+async def _read_within_limit(file: UploadFile, limit: int) -> bytes:
+    """Reads the Source in bounded chunks, rejecting as soon as `limit` is
+    exceeded rather than buffering an oversized upload into memory first."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(UPLOAD_CHUNK_BYTES)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Source exceeds the {_max_upload_label()} limit",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @app.get("/")
 async def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
@@ -107,7 +132,7 @@ async def create_job(file: UploadFile) -> JSONResponse:
             detail=f"unsupported file type; accepted formats: {ACCEPTED_FORMATS_LABEL}",
         )
 
-    source = await file.read()
+    source = await _read_within_limit(file, MAX_UPLOAD_BYTES)
     job = job_store.create()
 
     loop = asyncio.get_running_loop()
