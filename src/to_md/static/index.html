@@ -184,6 +184,14 @@
   #rendered table { border-collapse: collapse; width: 100%; }
   #rendered th, #rendered td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
 
+  #rendered:fullscreen {
+    max-height: none;
+    overflow: auto;
+    padding: 1.5rem;
+    background: var(--bg);
+  }
+  #rendered:fullscreen table { width: max-content; min-width: 100%; }
+
   @media (max-width: 30rem) {
     body { padding: 1.5rem 1rem 3rem; }
     #dropzone { padding: 2rem 1rem; }
@@ -221,6 +229,7 @@
           <button type="button" id="view-rendered" aria-pressed="false">Rendered</button>
         </div>
         <div class="actions">
+          <button type="button" id="fullscreen-button" hidden>Fullscreen</button>
           <button type="button" id="copy-button">Copy</button>
           <button type="button" id="download-button">Download</button>
         </div>
@@ -242,6 +251,7 @@
     const renderedEl = document.getElementById("rendered");
     const viewRawButton = document.getElementById("view-raw");
     const viewRenderedButton = document.getElementById("view-rendered");
+    const fullscreenButton = document.getElementById("fullscreen-button");
     const copyButton = document.getElementById("copy-button");
     const downloadButton = document.getElementById("download-button");
 
@@ -265,10 +275,12 @@
       renderedEl.hidden = raw;
       viewRawButton.setAttribute("aria-pressed", String(raw));
       viewRenderedButton.setAttribute("aria-pressed", String(!raw));
+      fullscreenButton.hidden = raw;
     }
 
     viewRawButton.addEventListener("click", () => showView("raw"));
     viewRenderedButton.addEventListener("click", () => showView("rendered"));
+    fullscreenButton.addEventListener("click", () => renderedEl.requestFullscreen());
 
     copyButton.addEventListener("click", async () => {
       try {
